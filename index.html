@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스프링 6주차</title>
+    <style>
+        body {
+            margin-right: 45px;
+            margin-left: 45px;
+        }
+        h1, h2{
+            color : #527bbd;
+            font-weight: bold;
+            text-align: left;
+            margin-top: 1.0em;
+            margin-bottom: 0.5em;
+            height: 20px;
+        }
+        hr {
+            border: 1px solid rgb(177, 177, 177);
+        }
+        header h2 {
+            margin-top: 50px;
+            margin-bottom: 1px;
+            height: 20px;
+        }
+
+        p {
+            font-family: Georgia,serif;
+        }
+    </style>
+</head>
+<body>
+   
+        <h1>스프링 6주차</h1>
+        <hr>
+        <h2>6.7.2 @Lazy</h2>
+        <hr>
+            <p>
+               기본적으로 싱글턴 스코프 빈은 컨테이너와 함께 만들어 졌다가 함께 소멸하는데,
+               싱글턴 빈을 나중에 생성하고 싶으면 빈 클래스에 @Lazy 애너테이션을 붙이면 됨.
+               <pre>
+                   NOTE_ @Lazy 애너테이션은 &lt;bean&gt; 엘리먼트의 lazy-init 속성과 같은 역할을 함.
+                   #lazy-init 속성이 true라면 싱글턴 빈 지연생성함 p.87
+               </pre>
+            </p>
+            <p>
+                예제 6-24를 보면 @Lazy 애너테이션의 사용 예시를 보여주고있음. 이때 value 속성값을 true로 하거나 디폴트로 두면 빈이 지연 생성됨.
+                <br>
+                @Lazy 애너테이션은 지연 자동 연결 의존 관계에도 사용 가능함.
+            </p>
+        <hr>
+        <h2>6.7.3 의존 관계를 지연 자동 연결하기</h2>
+        <hr>
+        <p>
+            @Lazy랑 자동 연결 애너테이션(@Autowired, @Inject, @Resource 등) 을 함께 사용해서 의존 관계의 자동 연결을 늦출 수 있음.
+            <br>
+            그림 6-2는 그냥 MyServices는 StatelessService(싱글턴 빈) 와 StatefulService(프로토타입 빈) 에 의존하고 있다는 것을
+            보여주며 의존받는 빈들은 메서드를 통해 빈에 접근할 때만 
+            <br>자동연결 되어야 한다고 말 하는 중.
+        </p>
+        <p>
+            <b>예제 6-25 MyServices 클래스</b>
+            <pre>
+                package sample.spring;
+
+                import org.apache.logging.log4j.LogManager;
+                import org.apache.logging.log4j.Logger;
+                import org.springframework.beans.factory.annotation.Autowired;
+                import org.springframework.context.annotation.Lazy;
+                import org.springframework.stereotype.Service;
+
+                @Service
+                public class MyServices {
+                    private static Logger logger = LogManager.getLogger(MyServices.class);
+                    
+                    @Autowired
+                    @Lazy
+                    private StatelessService statelessService;
+                    
+                    @Autowired
+                    @Lazy
+                    private StatefulService statefulService;
+
+                    public void useStateless() {
+                        logger.info(" --> " + statelessService);
+                    }
+
+                    public void useStateful() {
+                        logger.info(" --> " + statefulService);
+                    }
+                }
+            </pre>
+        </p>
+        <p>
+            예제 6-25를 보면 지연 자동 연결의 예시를 보여주고 있는데 자동 연결을 위한 @Autowired 애너테이션 밑에 지연생성인
+            @Lazy 애너테이션을 사용해서 사용한다는 걸 보여주고 있음. 
+            <br>각 메서드가 호출 될 때는 각 빈이 생성 될 것임.
+            여기서 의존 받고 있는 빈들은 지연 생성으로 정의 되어있으니, 컨테이너가 생성 될 때는 의존 하는 빈인 MyServices 싱글턴 빈만 생성 된다고 이야기 하는 중.. 
+            </p>
+            <p>
+            <b>예제 6-26 SampleApp 클래스</b>
+            <pre>
+                package sample.spring;
+
+                import org.apache.logging.log4j.LogManager;
+                import org.apache.logging.log4j.Logger;
+                import org.springframework.context.ConfigurableApplicationContext;
+                import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+                public class SampleApp {
+                    private static Logger logger = LogManager.getLogger(SampleApp.class);
+
+                    public static void main(String args[]) throws Exception {
+                        ConfigurableApplicationContext context = new ClassPathXmlApplicationContext(
+                                "classpath:META-INF/spring/applicationContext.xml");
+                        MyServices services = context.getBean(MyServices.class);
+                        logger.info("Calling --> useStateless");
+                        services.useStateless();
+                        logger.info("Calling again --> useStateless");
+                        services.useStateless();
+                        logger.info("Calling --> useStateful");
+                        services.useStateful();
+                        logger.info("Calling again --> useStateful");
+                        services.useStateful();
+                        context.close();
+                    }
+                }
+            </pre>
+        </p>
+        <p>
+            예제 6-26을 보면 MyService가 의존하는 두개의 빈을 두번 호출하는데, 출력 결과를 보면 싱글턴 빈인 StatelessService빈의 인스턴스는 한번만 생성 되는 것을 말하고 있음, 프로토타입 빈인 StatefulService빈의 인스턴스는 호출 될 때 마다 
+            새로운 인스턴스를 생성 하는 것을 보여줌.
+        </p>
+        <hr>
+        <h2>6.7.4 @DependsOn</h2>
+        <hr>
+        <p>
+            @DependsOn 애너테이션은 암시적으로 빈 의존 관계를 지정한대.
+            예제 6-27은 사용 예시를 나타내고 있음.
+            Sample 클래스를 생성하기 전에 beanA 와 beanB 빈을 먼저 생성 하라는 뜻.
+            <pre>
+            Note_ &lt;bean&gt; 엘리먼트의 depends-on 속성은 빈이 태어나는 순서를 제어하는 속성으로 
+            의존받는 빈이 의존하는 빈보다 먼저 태어나게끔 설정 할 수 있음. 
+            이것과 같은 역할을 하는것이 @DependsOn애너테이션.
+            </pre>
+        </p>
+        <hr>
+        <h2>6.7.5 @Primary</h2>
+        <hr>
+        <p>
+            예제 6-28은 @Primary 애너테이션의 사용 예시를 보여주고있음.
+            <pre>
+        Note_  &lt;bean&gt; 엘리먼트의 primary 속성은 프로퍼티의 타입과 일치하는 빈을 둘 이상 찾을 때
+        즉 자동 연결을 해야하는데 같은 타입의 빈이 둘 이상일때..? 
+        예외가 발생하는데 이를 해결해주기 위해서 해당 빈을
+        우선으로 만드는거임. primary의 속성이 true이면 제 1 후보인 빈이 되는거임. 
+        이것과 같은 역할을 하는것이 @Primary애너테이션.
+            </pre>
+        </p>
+        <hr>
+        <h2>6.8 @Value 애너테이션을 사용해 빈 클래스 설정하기</h2>
+        <hr>
+        <p>
+            &lt;property&gt; 나 &lt;constructor-arg&gt; 엘리먼트의 value 속성은 빈에 필요한 설정 정보를 지정하는 속성인데
+            <br>같은 역할을 하는 애너테이션이 @Value애너테이션임. 필드, 메소드, 파라미터, 생성자에 사용이 가능한듯..?
+        </p>
+        <p>
+            <b>예제 6-29 SampleApp클래스</b>
+            <pre>
+                package sample.spring.chapter06.beans;
+
+                import org.springframework.beans.factory.annotation.Autowired;
+                import org.springframework.beans.factory.annotation.Value;
+                import org.springframework.stereotype.Component;
+
+                @Component(value = "sample")
+                public class Sample {
+                    @Value("Some currency")
+                    private String currency;
+            </pre>
+        </p>
+        <p>
+            예제 6-29는 필드에 디폴트 값을 @Value로 설정하는 예시임.
+            <pre>
+            Note_ 살짝 만두공장에서 만두 재료를 기계에 넣는게 아니라
+            고향만두 한 봉을 넣는 느낌으로 이해함.
+            </pre>
+        </p>
+        <hr>
+        <h2>6.8.1 @Value 애너테이션에 SpEL 사용하기</h2>
+        <hr>
+        <p>
+        SpEL이 뭘까..?? 
+        SpEL은 보통 객체를 조회하고 조작하는 기능을 제공하여 Unified EL과 유사하지만 메소드 호출, 문자열 템플릿 기능 등의 여러가지 추가 기능을 제공하는 표현식 언어이다.
+        라고는 하지만 뭔말인지 모르겠어서 모두들 URL을 참고하자.
+        <a href="https://atoz-develop.tistory.com/entry/Spring-SpEL-Spring-Expression-Language" target="_blank">
+            https://atoz-develop.tistory.com/entry/Spring-SpEL-Spring-Expression-Language
+        </a>
+        </p>
+        <p>
+            <b>예제 6-30 Sample 클래스 - SpEL 식과 @Value를 함께 사용하기.</b>
+            <pre>
+                package sample.spring.chapter06.beans;
+
+                import org.springframework.beans.factory.annotation.Autowired;
+                import org.springframework.beans.factory.annotation.Value;
+                import org.springframework.stereotype.Component;
+
+                @Component(value = "sample")
+                public class Sample {
+                    @Value("#{configuration.environment}")
+                    private String environment;
+
+                    @Value("Some currency")
+                    private String currency;
+
+                    @Value("#{configuration.getCountry()}")
+                    private String country;
+
+                    @Value("#{configuration.state}")
+                    private String state;
+            </pre>
+        </p>
+        <p>
+            예제 6-30은 SpEL 식과 @Value를 함께 사용하는것을 보여주고있음.
+            #{spel식} 형식의 구문이 지정되어있음.
+            SpEL 식은 빈 이름.필드, 프로퍼티, 메소드 형식을 이용 할 수도 있대.
+            6-30을 다시 보면 configuration.enviroment, configurtaion.getCountry(), configurtaion.state 는 configuration 이라는
+            빈 클래스의 멤버들을 불러줘~ 라는 뜻임. 
+        </p>
+        <p>
+            예제 6-31은 Configuration 빈 클래스를 보여주고 있는데 이걸 보면 뭔 뜻인지 바로 이해 할듯??
+            나머지는 다 당연한 소리만 하고있으므로 읽어 보시면 되겠습니다! 
+        </p>
+</body>
+</html>
